@@ -158,6 +158,7 @@ void minHash2(size_t H, size_t k, const string& seq, vector<minimizer>& previous
 	previous.insert(previous.end(),sketchs.begin(),sketchs.end());
 }
 
+
 void updateMinimizer(minimizer&	min, char nuc,size_t k){
 	minimizer offset(1<<(2*k));
 	min<<=2;
@@ -215,6 +216,7 @@ void minHash3(size_t H, size_t k,const string& seq, vector<minimizer>& previous,
 	previous.insert(previous.end(),sketchs.begin(),sketchs.end());
 }
 
+
 vector<minimizer> minHashpart2(size_t H, size_t k,const string& seq, size_t part, const unordered_set<minimizer>& filter){
 	vector<minimizer> result;
 	size_t size(seq.size()/part);
@@ -225,6 +227,7 @@ vector<minimizer> minHashpart2(size_t H, size_t k,const string& seq, size_t part
 	return result;
 }
 
+
 minimizer seq2intStranded(const string& seq){
 	minimizer res(0);
 	for(uint i(0);i<seq.size();++i){
@@ -232,4 +235,59 @@ minimizer seq2intStranded(const string& seq){
 		res+=nuc2int(seq[i]);
 	}
 	return res;
+}
+
+
+unordered_multimap<string,string> allKmerMapStranded(size_t k,const string& seq, char nuc){
+	unordered_multimap<string,string> sketch;
+	for(size_t i(0); i+k<=seq.size(); ++i){
+		string kmer(seq.substr(i,k));
+		sketch.insert({kmer.substr(0,nuc),kmer.substr(nuc)});
+	}
+	return sketch;
+}
+
+
+bool equalStr(const string& seq1, const string& seq2){
+	size_t size(min(seq1.size(),seq2.size()));
+	return (seq1.substr(0,size))==seq2.substr(0,size);
+}
+
+
+bool isCorrect(const string& seq,const string& ref){
+	for(size_t i(0); i<seq.size(); ++i){
+		if(seq[i]!=ref[i]){
+			if(seq[i+1]==ref[i]){
+				return equalStr(seq.substr(i+2),ref.substr(i+1));
+			}
+			if(seq[i]==ref[i+1]){
+				return equalStr(seq.substr(i+1),ref.substr(i+2));
+			}
+			return (seq.substr(i+1)==ref.substr(i+1));
+		}
+	}
+	return true;
+}
+
+
+double jaccardStrandedErrors(size_t k, const string& seq, const unordered_multimap<string, string>& genomicKmers, char nuc){
+	double inter(0);
+	string kmer;
+	kmer.reserve(k);
+	size_t i(0);
+	for(; i+k<=seq.size(); ++i){
+		kmer=seq.substr(i,k);
+		if(kmer.size()!=k){
+			cout<<"wtf"<<endl;
+		}
+		auto range(genomicKmers.equal_range(kmer.substr(0,nuc)));
+		for (auto it(range.first); it!=range.second; it++){
+			if(isCorrect(kmer.substr(nuc),it->second)){
+				inter++;
+				break;
+			}else{
+			}
+		}
+	}
+	return double(100*inter/(seq.size()-k+1));;
 }

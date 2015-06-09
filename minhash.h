@@ -4,12 +4,15 @@
 #include <cctype>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
+
 
 typedef uint32_t minimizer;
 typedef unsigned int uint;
 
 
 using namespace std;
+
 
 minimizer seq2int(const string& seq);
 minimizer seq2intStranded(const string& seq);
