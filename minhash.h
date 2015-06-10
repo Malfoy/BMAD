@@ -31,5 +31,8 @@ uint32_t sketchComparison(const vector<minimizer>& sketch1, const vector<minimiz
 vector<minimizer> minHash(uint32_t H, uint8_t k, const string& seq);
 vector<minimizer> minHashPart(uint32_t H, uint8_t k,const string& seq, uint8_t part);
 double scoreFromAlignment(const string& seq1,const string& seq2);
+unordered_set <minimizer> allKmerSet(uint8_t k,const string& seq);
+vector<minimizer> minHashPart2(uint32_t H, uint8_t k, const string& seq, uint8_t part, const unordered_set<minimizer>& filter);
+
 
 #endif

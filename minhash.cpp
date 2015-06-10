@@ -266,7 +266,7 @@ void minHash3(uint32_t H, uint8_t k,const string& seq, vector<minimizer>& previo
 
 
 //Compute a sketch of SEQ, with H minimizer of size K distibuted on PART parts, but only kmers in the set FILTER are considered
-vector<minimizer> minHashpart2(uint32_t H, uint8_t k, const string& seq, uint8_t part, const unordered_set<minimizer>& filter){
+vector<minimizer> minHashPart2(uint32_t H, uint8_t k, const string& seq, uint8_t part, const unordered_set<minimizer>& filter){
 	vector<minimizer> result;
 	uint size(seq.size()/part);
 	for(uint i(0);i<part;++i){
