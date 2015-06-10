@@ -1,3 +1,6 @@
+#ifndef MH
+#define MH
+
 #include <string>
 #include <iostream>
 #include <cstdint>
@@ -26,4 +29,7 @@ string randomSeq(uint32_t length);
 uint32_t sketchHammingComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2);
 uint32_t sketchComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2);
 vector<minimizer> minHash(uint32_t H, uint8_t k, const string& seq);
+vector<minimizer> minHashPart(uint32_t H, uint8_t k,const string& seq, uint8_t part);
+double scoreFromAlignment(const string& seq1,const string& seq2);
 
+#endif

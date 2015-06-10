@@ -148,7 +148,7 @@ minimizer seq2int(const string& seq){
 
 
 //compute the sketch of SEQ with H minimizers of size K, the read is separated in PART parts with H/PART minimizers each
-vector<minimizer> minHashpart(uint32_t H, uint8_t k,const string& seq, uint8_t part){
+vector<minimizer> minHashPart(uint32_t H, uint8_t k,const string& seq, uint8_t part){
 	vector<minimizer> result;
 	uint size(seq.size()/part);
 	for(uint i(0);i<part;++i){
@@ -361,5 +361,17 @@ uint32_t sketchComparison(const vector<minimizer>& sketch1, const vector<minimiz
 	for(uint i(0); i<sketch2.size(); ++i){
 		if(minimizerSet.count(sketch2[i])!=0){++res;}
 	}
+	return res;
+}
+
+
+double scoreFromAlignment(const string& seq1,const string& seq2){
+	size_t errors(0);
+	for(size_t i(0);i<seq1.size();++i){
+		if(seq1[i]!=seq2[i]){
+			++errors;
+		}
+	}
+	double res((100*errors)/(seq1.size()));
 	return res;
 }

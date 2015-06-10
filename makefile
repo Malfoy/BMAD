@@ -19,13 +19,16 @@ EXEC=minhashTest
 
 all: $(EXEC)
 
-minhashTest: minhashTest.o   minhash.o
+minhashTest: minhashTest.o   minhash.o nw.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-minhashTest.o: main.cpp minhash.h
+minhashTest.o: main.cpp minhash.h nw.h
 	$(CC) -o $@ -c $< $(CFLAGS)
 
 minhash.o: minhash.cpp minhash.h
+	$(CC) -o $@ -c $< $(CFLAGS)
+
+nw.o: nw.cpp nw.h
 	$(CC) -o $@ -c $< $(CFLAGS)
 
 
