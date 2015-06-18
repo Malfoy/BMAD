@@ -3,6 +3,21 @@
 using namespace std;
 
 
+char randNuc(){
+	switch (rand()%4){
+		case 0:
+			return 'A';
+		case 1:
+			return 'C';
+		case 2:
+			return 'G';
+		case 3:
+			return 'T';
+	}
+	return 'A';
+}
+
+
 string randomSeq(uint32_t length){
 	auto randchar=[]() -> char{
 		const char charset[] ="ATCG";
@@ -12,6 +27,15 @@ string randomSeq(uint32_t length){
 	string str(length,0);
 	generate_n( str.begin(), length, randchar );
 	return str;
+}
+
+
+string mutate(string read,int n){
+	for(int i(0); i<n; ++i){
+		int position(rand()%read.size());
+		read[position]=randNuc();
+	}
+	return read;
 }
 
 
@@ -287,7 +311,8 @@ minimizer seq2intStranded(const string& seq){
 }
 
 
-unordered_multimap<string,string> allKmerMapStranded(size_t k,const string& seq, char nuc){
+//Index all kmers (in a stranded way) to allow 1 error, nuc is the siez of the 'seed'
+unordered_multimap<string,string> allKmerMapStranded(uint8_t k,const string& seq, uint8_t nuc){
 	unordered_multimap<string,string> sketch;
 	for(size_t i(0); i+k<=seq.size(); ++i){
 		string kmer(seq.substr(i,k));
@@ -296,6 +321,44 @@ unordered_multimap<string,string> allKmerMapStranded(size_t k,const string& seq,
 	return sketch;
 }
 
+
+//stranded function !!!
+unordered_multimap<string,string> minHashErrors(uint32_t H, uint8_t k, const string& seq, uint8_t nuc){
+	unordered_multimap<string,string> map;
+	vector<uint64_t> sketch(H);
+	vector<uint32_t> sketchs(H);
+	uint64_t hashValue;
+	//	hash<uint32_t> hash;
+
+	minimizer kmer(seq2intStranded(seq.substr(0,k)));
+	//hashValue=hash(kmer);
+	//here I use a bad hash function for the first hash computation, this COULD lead to bas results,we could put a state of the art hash function as Murmurhash3
+	hashValue=xorshift64(kmer);
+	for(uint j(0); j<H; ++j){
+		sketch[j]=hashValue;
+		sketchs[j]=kmer;
+		hashValue=xorshift64(hashValue);
+	}
+	for(uint i(1); i+k<seq.size(); ++i){
+		updateMinimizer(kmer, seq[i+k], k);
+		hashValue=xorshift64(kmer);
+		//hashValue=hash(kmer);
+		for(uint j(0); j<H; ++j){
+			if(hashValue<sketch[j]){
+				sketch[j]=hashValue;
+				sketchs[j]=j;
+			}
+			hashValue=xorshift64(hashValue);
+		}
+	}
+
+	for(uint i(0); i<H; ++i){
+		string kmer(seq.substr(sketchs[i],k));
+		map.insert({kmer.substr(0,nuc),kmer.substr(nuc)});
+	}
+
+	return map;
+}
 
 bool equalStr(const string& seq1, const string& seq2){
 	uint size(min(seq1.size(),seq2.size()));
@@ -327,23 +390,20 @@ double percentStrandedErrors(uint8_t k, const string& seq, const unordered_multi
 	uint i(0);
 	for(; i+k<=seq.size(); ++i){
 		kmer=seq.substr(i,k);
-		if(kmer.size()!=k){
-			cout<<"wtf"<<endl;
-		}
+		if(kmer.size()!=k){cout<<"wtf"<<endl;}
 		auto range(genomicKmers.equal_range(kmer.substr(0,nuc)));
-		for (auto it(range.first); it!=range.second; it++){
+		for(auto it(range.first); it!=range.second; ++it){
 			if(isCorrect(kmer.substr(nuc),it->second)){
-				inter++;
+				++inter;
 				break;
-			}else{
-			}
+			}else{}
 		}
 	}
 	return double(100*inter/(seq.size()-k+1));;
 }
 
 
-uint32_t sketchHammingComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
+uint32_t sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
 	uint32_t res(0);
 	for(uint i(0); i<sketch1.size(); ++i){
 		if(sketch1[i]==sketch2[i]){++res;}
@@ -352,7 +412,8 @@ uint32_t sketchHammingComparison(const vector<minimizer>& sketch1, const vector<
 }
 
 
-uint32_t sketchComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
+
+uint32_t sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
 	uint32_t res(0);
 	unordered_set<minimizer> minimizerSet;
 	for(uint i(0); i<sketch1.size(); ++i){
@@ -365,13 +426,29 @@ uint32_t sketchComparison(const vector<minimizer>& sketch1, const vector<minimiz
 }
 
 
-double scoreFromAlignment(const string& seq1,const string& seq2){
-	size_t errors(0);
-	for(size_t i(0);i<seq1.size();++i){
-		if(seq1[i]!=seq2[i]){
-			++errors;
+uint32_t sketchUnorderedComparisonError(const unordered_multimap<string, string>& map1, const unordered_multimap<string, string>& map2){
+	uint32_t res(0);
+	string beg,end;
+	for (auto it=map1.begin(); it!=map1.end(); ++it){
+		beg=it->first;
+		end=it->second;
+		auto ret = map2.equal_range(beg);
+		for (auto it2=ret.first; it2!=ret.second; ++it2){
+			if(isCorrect(end,it2->second)){
+				++res;
+			}
 		}
 	}
-	double res((100*errors)/(seq1.size()));
+	return res;
+}
+
+double scoreFromAlignment(const string& seq1,const string& seq2){
+	size_t match(0);
+	for(size_t i(0);i<seq1.size();++i){
+		if(seq1[i]==seq2[i]){
+			++match;
+		}
+	}
+	double res((100*match)/(seq1.size()));
 	return res;
 }
