@@ -1,5 +1,5 @@
-# MHK
-Minhash adapted for kmers
+# BMAD
+Minhash adapted for kmers in redundant read set
 
 Try:
 
