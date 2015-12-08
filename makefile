@@ -1,5 +1,5 @@
-#CC=/usr/bin/g++
-CC=g++
+CC=/usr/bin/g++
+#CC=g++
 CFLAGS=  -Wall  -O3 -std=c++11 -march=native -pthread
 LDFLAGS=-pthread
 
@@ -19,18 +19,23 @@ EXEC=minhashTest
 
 all: $(EXEC)
 
-minhashTest: minhashTest.o   minhash.o nw.o
+minhashTest: minhashTest.o  minhash.o nw.o utils.o xor.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-minhashTest.o: main.cpp minhash.h nw.h
+minhashTest.o: main.cpp minhash.h nw.h utils.h
 	$(CC) -o $@ -c $< $(CFLAGS)
 
-minhash.o: minhash.cpp minhash.h
+minhash.o: minhash.cpp minhash.h xor.h utils.h
+	$(CC) -o $@ -c $< $(CFLAGS)
+
+utils.o: utils.cpp utils.h
 	$(CC) -o $@ -c $< $(CFLAGS)
 
 nw.o: nw.cpp nw.h
 	$(CC) -o $@ -c $< $(CFLAGS)
 
+xor.o: xor.cpp xor.h
+	$(CC) -o $@ -c $< $(CFLAGS)
 
 clean:
 	rm -rf *.o

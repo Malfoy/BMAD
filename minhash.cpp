@@ -1,136 +1,42 @@
 #include "minhash.h"
+#include "xor.h"
+#include "utils.h"
+
 
 using namespace std;
 
 
-char randNuc(){
-	switch (rand()%4){
-		case 0:
-			return 'A';
-		case 1:
-			return 'C';
-		case 2:
-			return 'G';
-		case 3:
-			return 'T';
-	}
-	return 'A';
-}
-
-
-string randomSeq(uint32_t length){
-	auto randchar=[]() -> char{
-		const char charset[] ="ATCG";
-		const uint32_t max_index = (sizeof(charset) - 1);
-		return charset[ rand() % max_index ];
-	};
-	string str(length,0);
-	generate_n( str.begin(), length, randchar );
-	return str;
-}
-
-
-string mutate(string read,int n){
-	for(int i(0); i<n; ++i){
-		int position(rand()%read.size());
-		read[position]=randNuc();
-	}
-	return read;
-}
-
-
-uint8_t nuc2int(char c){
-	switch(c){
-		/*
-		case 'a': return 0;
-		case 'c': return 1;
-		case 'g': return 2;
-		case 't': return 3;
-		*/
-		case 'A': return 0;
-		case 'C': return 1;
-		case 'G': return 2;
-		case 'T': return 3;
-	}
-	return 0;
-}
-
-
-char revcomp (char s) {
-	if (s == 'A') return 'T';
-	else if (s == 'C') return 'G';
-	else if (s == 'G') return 'C';
-	else if (s == 'T') return 'A';
-/*
-	else if (s == 'a') return 't';
-	else if (s == 'c') return 'g';
-	else if (s == 'g') return 'c';
-	else if (s == 't') return 'a';
-*/
-	return 'X';//error
-}
-
-
-string reversecomplement (const string& s){
-	string rc;
-	for (int i = (int)s.length() - 1; i >= 0; i--){
-		rc += revcomp(s[i]);
-	}
-	return rc;
-}
-
-
-void updateMinimizer(minimizer&	min, char nuc, uint8_t k){
-	minimizer offset(1<<(2*k));
+void updateMinimizer(minimizer&	min, char nuc, uint k){
+	// cout<<"go"<<endl;
+	// int2seq(min, 17);
+	minimizer offset(1);
+	offset<<=(2*k);
+	// cout<<offset<<endl;
+	// int2seq(offset, 18);
 	min<<=2;
+	// int2seq(min, 17);
 	min+=nuc2int(nuc);
+	// int2seq(min, 17);
 	min%=offset;
+	// int2seq(min, 17);
+	// cout<<"end"<<endl;
 }
 
 
-void updateMinimizerEnd(minimizer&	min, char nuc, uint8_t k){
+void updateMinimizerEnd(minimizer&	min, char nuc, uint k){
 	min>>=2;
 	min+=(nuc2int(nuc)<<(2*k-2));
 }
 
 
-void updateMinimizerRC(minimizer&	min, char nuc, uint8_t k){
+void updateMinimizerRC(minimizer&	min, char nuc, uint k){
 	min>>=2;
 	min+=((3-nuc2int(nuc))<<(2*k-2));
 }
 
 
-
-//simplest (fastest ?) hash function
-uint64_t xorshift64(uint64_t x) {
-	x ^= x >> 12; // a
-	x ^= x << 25; // b
-	x ^= x >> 27; // c
-	return x * UINT64_C(2685821657736338717);
-}
-
-
-//A sequence and its reverse complement are represented by the same sequence
-string getRepresent (const string& str){
-	return (min(str,reversecomplement(str)));
-}
-
-
-string getRepresent2(const string& s){
-	for (int i = 0; i < (int)s.length(); i++) {
-		char c = revcomp(s[s.length() - 1 - i]);
-		if (s[i] < c) {
-			return s;
-		} else if (s[i] > c) {
-			return reversecomplement(s);
-		}
-	}
-	return s;
-}
-
-
 //return a sketch containing all kmers
-vector<minimizer> allHash(uint8_t k,const string& seq){
+vector<minimizer> allKmer(uint k,const string& seq){
 	vector<minimizer> sketch;
 	minimizer kmerS(seq2intStranded((seq.substr(0,k))));
 	minimizer kmerRC(seq2intStranded((reversecomplement(seq.substr(0,k)))));
@@ -151,28 +57,54 @@ vector<minimizer> allHash(uint8_t k,const string& seq){
 }
 
 
-unordered_set <minimizer> allKmerSet(uint8_t k,const string& seq){
-	unordered_set<minimizer> sketch;
-	for(uint i(0);i+k<=seq.size();++i){
-		sketch.insert(seq2int(seq.substr(i,k)));
-	}
+//return a sketch containing all kmers
+vector<minimizer> allGenomicKmers(uint k,const string& seq,unordered_set <minimizer> set){
+	vector<minimizer> sketch;
+	minimizer kmerS(seq2intStranded((seq.substr(0,k))));
+	minimizer kmerRC(seq2intStranded((reversecomplement(seq.substr(0,k)))));
+	minimizer kmer(min(kmerRC,kmerS));
+	uint i(0);
+	do{
+		if(set.unordered_set::count(kmer)!=0){
+			sketch.push_back(kmer);
+		}
+		if(i+k<seq.size()){
+			updateMinimizer(kmerS, seq[i+k], k);
+			updateMinimizerRC(kmerRC, seq[i+k], k);
+			kmer=min(kmerRC,kmerS);
+		}else{
+			return sketch;
+		}
+		++i;
+	}while(true);
 	return sketch;
 }
 
 
-minimizer seq2int(const string& seq){
-	string str(getRepresent(seq));
-	minimizer res(0);
-	for(uint i(0);i<seq.size();++i){
-		res<<=2;
-		res+=nuc2int(str[i]);
-	}
-	return res;
+//return a set containing all kmers
+unordered_set<minimizer> allKmerSet(uint k,const string& seq){
+	unordered_set<minimizer> set;
+	minimizer kmerS(seq2intStranded((seq.substr(0,k))));
+	minimizer kmerRC(seq2intStranded((reversecomplement(seq.substr(0,k)))));
+	minimizer kmer(min(kmerRC,kmerS));
+	uint i(0);
+	do{
+		set.insert(kmer);
+		if(i+k<seq.size()){
+			updateMinimizer(kmerS, seq[i+k], k);
+			updateMinimizerRC(kmerRC, seq[i+k], k);
+			kmer=min(kmerRC,kmerS);
+		}else{
+			return set;
+		}
+		++i;
+	}while(true);
+	return set;
 }
 
 
 //compute the sketch of SEQ with H minimizers of size K, the read is separated in PART parts with H/PART minimizers each
-vector<minimizer> minHashPart(uint32_t H, uint8_t k,const string& seq, uint8_t part){
+vector<minimizer> minHashPart(uint H, uint k,const string& seq, uint part){
 	vector<minimizer> result;
 	uint size(seq.size()/part);
 	for(uint i(0);i<part;++i){
@@ -182,90 +114,100 @@ vector<minimizer> minHashPart(uint32_t H, uint8_t k,const string& seq, uint8_t p
 }
 
 
-void minHash2(size_t H, size_t k, const string& seq, vector<minimizer>& previous){
+void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
 	uint64_t hashValue;
-	//	hash<uint32_t> hash;
 
 	minimizer kmerS(seq2intStranded(seq.substr(0,k)));
 	minimizer kmerRC(seq2intStranded(reversecomplement(seq.substr(0,k))));
 	minimizer kmer(min(kmerS,kmerRC));
 	//	hashValue=hash(kmer);
-	hashValue=xorshift64(kmer);
+	hashValue=hash64(kmer);
 	for(uint j(0); j<H; ++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
-		hashValue=xorshift64(hashValue);
+		hashValue=hash64(hashValue);
 	}
 	for(uint i(1); i+k<seq.size(); ++i){
 		updateMinimizer(kmerS, seq[i+k], k);
 		updateMinimizerRC(kmerRC, seq[i+k], k);
+		// minimizer kmerS(seq2intStranded(seq.substr(i,k)));
+		// minimizer kmerRC(seq2intStranded(reversecomplement(seq.substr(i,k))));
 		kmer=(min(kmerS,kmerRC));
-		hashValue=xorshift64(kmer);
+		hashValue=hash64(kmer);
 		//		hashValue=hash(kmer);
 		for(uint j(0); j<H; ++j){
 			if(hashValue<sketch[j]){
 				sketch[j]=hashValue;
 				sketchs[j]=kmer;
 			}
-			hashValue=xorshift64(hashValue);
+			hashValue=hash64(hashValue);
 		}
 	}
 	previous.insert(previous.end(),sketchs.begin(),sketchs.end());
 }
 
-//compute H minimizers of size k from seq
-vector<minimizer> minHash(uint32_t H, uint8_t k, const string& seq){
+
+//compute H minimizers of size k from seq, minhash vanilla
+vector<minimizer> minHash(uint H, uint k, const string& seq){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
 	uint64_t hashValue;
-	//	hash<uint32_t> hash;
 
 	minimizer kmerS(seq2intStranded(seq.substr(0,k)));
 	minimizer kmerRC(seq2intStranded(reversecomplement(seq.substr(0,k))));
 	minimizer kmer(min(kmerS,kmerRC));
+	// cout<<kmer<<endl;
 	//hashValue=hash(kmer);
 	//here I use a bad hash function for the first hash computation, this COULD lead to bas results,we could put a state of the art hash function as Murmurhash3
-	hashValue=xorshift64(kmer);
+	hashValue=hash64(kmer);
+	// int2seq(kmer, 16);
+	// cin.get();
+
 	for(uint j(0); j<H; ++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
-		hashValue=xorshift64(hashValue);
+		hashValue=hash64(hashValue);
 	}
 	for(uint i(1); i+k<seq.size(); ++i){
 		updateMinimizer(kmerS, seq[i+k], k);
 		updateMinimizerRC(kmerRC, seq[i+k], k);
+		// int2seq(kmerS, 16);
+		// int2seq(kmerRC, 16);
+		// minimizer kmerS(seq2intStranded(seq.substr(i,k)));
+		// minimizer kmerRC(seq2intStranded(reversecomplement(seq.substr(i,k))));
 		kmer=(min(kmerS,kmerRC));
-		hashValue=xorshift64(kmer);
+		// int2seq(kmer, 16);
+		// cin.get();
+		hashValue=hash64(kmer);
 		//hashValue=hash(kmer);
 		for(uint j(0); j<H; ++j){
 			if(hashValue<sketch[j]){
 				sketch[j]=hashValue;
 				sketchs[j]=kmer;
 			}
-			hashValue=xorshift64(hashValue);
+			hashValue=hash64(hashValue);
 		}
 	}
 	return sketchs;
 }
 
 
-void minHash3(uint32_t H, uint8_t k,const string& seq, vector<minimizer>& previous, const unordered_set<minimizer>& filter){
+void minHash3(uint H, uint k,const string& seq, vector<minimizer>& previous, const unordered_set<minimizer>& filter){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
-	uint64_t hashValue;;
-	//~ hash<uint32_t> hash;
+	uint64_t hashValue;
 
 	minimizer kmerS=seq2intStranded(seq.substr(0,k));
 	minimizer kmerRC=seq2intStranded(reversecomplement(seq.substr(0,k)));
 	minimizer kmer(min(kmerS,kmerRC));
-	hashValue=xorshift64(kmer);
+	hashValue=hash64(kmer);
 	//~ hashValue=hash(kmer);
 	for(uint j(0);j<H;++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
-		hashValue=xorshift64(hashValue);
+		hashValue=hash64(hashValue);
 	}
 
 	for(uint i(1);i+k<seq.size();++i){
@@ -274,14 +216,14 @@ void minHash3(uint32_t H, uint8_t k,const string& seq, vector<minimizer>& previo
 		kmer=min(kmerRC,kmerS);
 
 		if(filter.unordered_set::count(kmer)!=0){
-			hashValue=xorshift64(kmer);
+			hashValue=hash64(kmer);
 			//~ hashValue=hash(kmer);
 			for(uint j(0);j<H;++j){
 				if(hashValue<sketch[j]){
 					sketch[j]=hashValue;
 					sketchs[j]=kmer;
 				}
-				hashValue=xorshift64(hashValue);
+				hashValue=hash64(hashValue);
 			}
 		}
 	}
@@ -289,30 +231,52 @@ void minHash3(uint32_t H, uint8_t k,const string& seq, vector<minimizer>& previo
 }
 
 
-//Compute a sketch of SEQ, with H minimizer of size K distibuted on PART parts, but only kmers in the set FILTER are considered
-vector<minimizer> minHashPart2(uint32_t H, uint8_t k, const string& seq, uint8_t part, const unordered_set<minimizer>& filter){
-	vector<minimizer> result;
-	uint size(seq.size()/part);
-	for(uint i(0);i<part;++i){
-		//~ minHash3(H/part,k,seq.substr(i*size,size+16),result,filter);
-		minHash3(H/part,k,seq.substr(i*size,size),result,filter);
-	}
-	return result;
-}
+//Compute a sketch of SEQ, with H minimizer of size K , but only kmers in the set FILTER are considered
+vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unordered_set<minimizer>& filter){
+	vector<uint64_t> sketch(H);
+	vector<minimizer> sketchs(H);
+	uint64_t hashValue;
 
-
-minimizer seq2intStranded(const string& seq){
-	minimizer res(0);
-	for(uint i(0);i<seq.size();++i){
-		res<<=2;
-		res+=nuc2int(seq[i]);
+	minimizer kmerS=seq2intStranded(seq.substr(0,k));
+	minimizer kmerRC=seq2intStranded(reversecomplement(seq.substr(0,k)));
+	minimizer kmer(min(kmerS,kmerRC));
+	uint i(1);
+	while(filter.unordered_set::count(kmer)==0){
+		updateMinimizerRC(kmerRC, seq[i+k], k);
+		updateMinimizer(kmerS, seq[i+k], k);
+		kmer=min(kmerRC,kmerS);
+		++i;
 	}
-	return res;
+	hashValue=hash64(kmer);
+	for(uint j(0);j<H;++j){
+		sketch[j]=hashValue;
+		sketchs[j]=kmer;
+		hashValue=hash64(hashValue);
+	}
+
+	for(;i+k<seq.size();++i){
+		updateMinimizerRC(kmerRC, seq[i+k], k);
+		updateMinimizer(kmerS, seq[i+k], k);
+		kmer=min(kmerRC,kmerS);
+
+		if(filter.unordered_set::count(kmer)!=0){
+			hashValue=hash64(kmer);
+			//~ hashValue=hash(kmer);
+			for(uint j(0);j<H;++j){
+				if(hashValue<sketch[j]){
+					sketch[j]=hashValue;
+					sketchs[j]=kmer;
+				}
+				hashValue=hash64(hashValue);
+			}
+		}
+	}
+	return sketchs;
 }
 
 
 //Index all kmers (in a stranded way) to allow 1 error, nuc is the siez of the 'seed'
-unordered_multimap<string,string> allKmerMapStranded(uint8_t k,const string& seq, uint8_t nuc){
+unordered_multimap<string,string> allKmerMapStranded(uint k,const string& seq, uint nuc){
 	unordered_multimap<string,string> sketch;
 	for(size_t i(0); i+k<=seq.size(); ++i){
 		string kmer(seq.substr(i,k));
@@ -323,32 +287,30 @@ unordered_multimap<string,string> allKmerMapStranded(uint8_t k,const string& seq
 
 
 //stranded function !!!
-unordered_multimap<string,string> minHashErrors(uint32_t H, uint8_t k, const string& seq, uint8_t nuc){
+unordered_multimap<string,string> minHashErrors(uint H, uint k, const string& seq, uint nuc){
 	unordered_multimap<string,string> map;
 	vector<uint64_t> sketch(H);
-	vector<uint32_t> sketchs(H);
-	uint64_t hashValue;
-	//	hash<uint32_t> hash;
+	vector<minimizer> sketchs(H);
 
 	minimizer kmer(seq2intStranded(seq.substr(0,k)));
-	//hashValue=hash(kmer);
+	// hashValue=hash(kmer);
 	//here I use a bad hash function for the first hash computation, this COULD lead to bas results,we could put a state of the art hash function as Murmurhash3
-	hashValue=xorshift64(kmer);
+	uint64_t hashValue=hash64(kmer);
 	for(uint j(0); j<H; ++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
-		hashValue=xorshift64(hashValue);
+		hashValue=hash64(hashValue);
 	}
 	for(uint i(1); i+k<seq.size(); ++i){
 		updateMinimizer(kmer, seq[i+k], k);
-		hashValue=xorshift64(kmer);
+		hashValue=hash64(kmer);
 		//hashValue=hash(kmer);
 		for(uint j(0); j<H; ++j){
 			if(hashValue<sketch[j]){
 				sketch[j]=hashValue;
 				sketchs[j]=j;
 			}
-			hashValue=xorshift64(hashValue);
+			hashValue=hash64(hashValue);
 		}
 	}
 
@@ -358,97 +320,4 @@ unordered_multimap<string,string> minHashErrors(uint32_t H, uint8_t k, const str
 	}
 
 	return map;
-}
-
-bool equalStr(const string& seq1, const string& seq2){
-	uint size(min(seq1.size(),seq2.size()));
-	return (seq1.substr(0,size))==seq2.substr(0,size);
-}
-
-
-//rewrite with ternary operator
-bool isCorrect(const string& seq,const string& ref){
-	for(uint i(0); i<seq.size(); ++i){
-		if(seq[i]!=ref[i]){
-			if(seq[i+1]==ref[i]){
-				return equalStr(seq.substr(i+2),ref.substr(i+1));
-			}
-			if(seq[i]==ref[i+1]){
-				return equalStr(seq.substr(i+1),ref.substr(i+2));
-			}
-			return (seq.substr(i+1)==ref.substr(i+1));
-		}
-	}
-	return true;
-}
-
-
-double percentStrandedErrors(uint8_t k, const string& seq, const unordered_multimap<string, string>& genomicKmers, char nuc){
-	double inter(0);
-	string kmer;
-	kmer.reserve(k);
-	uint i(0);
-	for(; i+k<=seq.size(); ++i){
-		kmer=seq.substr(i,k);
-		if(kmer.size()!=k){cout<<"wtf"<<endl;}
-		auto range(genomicKmers.equal_range(kmer.substr(0,nuc)));
-		for(auto it(range.first); it!=range.second; ++it){
-			if(isCorrect(kmer.substr(nuc),it->second)){
-				++inter;
-				break;
-			}else{}
-		}
-	}
-	return double(100*inter/(seq.size()-k+1));;
-}
-
-
-uint32_t sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
-	uint32_t res(0);
-	for(uint i(0); i<sketch1.size(); ++i){
-		if(sketch1[i]==sketch2[i]){++res;}
-	}
-	return res;
-}
-
-
-
-uint32_t sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
-	uint32_t res(0);
-	unordered_set<minimizer> minimizerSet;
-	for(uint i(0); i<sketch1.size(); ++i){
-		minimizerSet.insert(sketch1[i]);
-	}
-	for(uint i(0); i<sketch2.size(); ++i){
-		if(minimizerSet.count(sketch2[i])!=0){++res;}
-	}
-	return res;
-}
-
-
-uint32_t sketchUnorderedComparisonError(const unordered_multimap<string, string>& map1, const unordered_multimap<string, string>& map2){
-	uint32_t res(0);
-	string beg,end;
-	for (auto it=map1.begin(); it!=map1.end(); ++it){
-		beg=it->first;
-		end=it->second;
-		auto ret = map2.equal_range(beg);
-		for (auto it2=ret.first; it2!=ret.second; ++it2){
-			if(isCorrect(end,it2->second)){
-				++res;
-			}
-		}
-	}
-	return res;
-}
-
-double scoreFromAlignment(const string& seq1,const string& seq2){
-	size_t match(0);
-	for(size_t i(0);i<seq1.size();++i){
-		if(seq1[i]==seq2[i]){
-			++match;
-		}
-	}
-	double res((100*match)/(seq1.size()));
-	return res;
 }
