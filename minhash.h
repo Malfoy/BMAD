@@ -38,5 +38,7 @@ string mutate(string read,int n);
 vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unordered_set<minimizer>& filter);
 vector<minimizer> allGenomicKmers(uint k,const string& seq,unordered_set <minimizer> set);
 void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous);
+vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<uint32_t,uint32_t> map,uint nuc);
+unordered_multimap<uint32_t,uint32_t> allKmerMap(const char k,const string& seq, const  char nuc);
 
 #endif

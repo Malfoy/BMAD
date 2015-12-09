@@ -3,8 +3,6 @@
 #include <stdio.h>
 // #include <iostream>
 
-using namespace std;
-
 
 uint32_t xor32(uint32_t y){
 	y^=(y<<13); y^=(y>>17); return (y^=(y<<15));

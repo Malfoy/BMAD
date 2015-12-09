@@ -11,6 +11,7 @@ using namespace std;
 int main(int argc, char ** argv){
 	srand (time(NULL));
 	uint H(1000);
+	uint nuc(5);
 	uint k(12),part(2);
 	string readFile1("reads_virus_region_5000_0001.ref");
 	string readFile2("readvirus.fa");
@@ -21,7 +22,7 @@ int main(int argc, char ** argv){
 	V1=getReads(readFile1,1);
 	V2=getReads(readFile2,1);
 	for(int j(0);j<12;j+=2){
-	uint i(0),res1(0),res2(0),res3(0),res4(0),res5(0),res6(0),res7(0),res8(0);
+	uint i(0),res1(0),res2(0),res3(0),res4(0),res5(0),res6(0),res7(0),res8(0),res9(0),res10(0);
 		k=12+j;
 		cout<<"k:"<<k<<endl;
 		for(;i<V1.size();++i){
@@ -47,11 +48,19 @@ int main(int argc, char ** argv){
 			res7+=(sketchUnorderedComparison(sketch7,sketch8));
 			res8+=(sketchOrderedComparison(sketch7,sketch8));
 
+			unordered_multimap<uint32_t,uint32_t> quasi(allKmerMap(k,ref,nuc));
+
+			vector<minimizer> sketch9(allQuasiGenomicKmers(k,seq1,quasi,nuc)),sketch10(allQuasiGenomicKmers(k,seq2,quasi,nuc));
+			res9+=(sketchUnorderedComparison(sketch9,sketch10));
+			res10+=(sketchOrderedComparison(sketch9,sketch10));
+
 		}
-		cout<<res1/i<<" "<<res2/i<<" "<<endl
-		<<res3/i<<" "<<res4/i<<" "<<endl
-		<<res5/i<<" "<<res6/i<<" "<<endl
-		<<res7/i<<" "<<res8/i<<endl<<endl;
+		cout
+		<<"minhash vanilla                  : "<<res1/i<<" "<<res2/i<<" "<<endl
+		<<"minhash with minimizer reparition: "<<res3/i<<" "<<res4/i<<" "<<endl
+		<<"minhash with only genomic kmers  : "<<res5/i<<" "<<res6/i<<" "<<endl
+		<<"genomic kmers                    : "<<res7/i<<" "<<res8/i<<endl
+		<<"quasi genomic kmer               ; "<<res9/i<<" "<<res10/i<<endl<<endl;
 	}
 
 

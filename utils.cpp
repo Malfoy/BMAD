@@ -268,6 +268,29 @@ uint sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<mi
 }
 
 
+minimizer cat(uint32_t seed, uint32_t body, uint n){
+	minimizer res(seed);
+	minimizer nbody=body<<(2*n);
+	return res+=nbody;
+}
+
+
+minimizer rc(minimizer min,uint n){
+	minimizer res(0);
+	for(uint i(0); i<n;++i){
+		res+=(3-(res%4));
+		res>>=2;
+
+	}
+	return res;
+}
+
+
+minimizer getRepresent(minimizer kmer, uint n){
+	return (min(kmer,rc(kmer,n)));
+}
+
+
 uint sketchUnorderedComparisonError(const unordered_multimap<string, string>& map1, const unordered_multimap<string, string>& map2){
 	uint res(0);
 	string beg,end;
