@@ -210,7 +210,6 @@ void minHash3(uint H, uint k,const string& seq, vector<minimizer>& previous, con
 	minimizer kmerRC=seq2intStranded(reversecomplement(seq.substr(0,k)));
 	minimizer kmer(min(kmerS,kmerRC));
 	hashValue=hash64(kmer);
-	//~ hashValue=hash(kmer);
 	for(uint j(0);j<H;++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
@@ -224,7 +223,6 @@ void minHash3(uint H, uint k,const string& seq, vector<minimizer>& previous, con
 
 		if(filter.unordered_set::count(kmer)!=0){
 			hashValue=hash64(kmer);
-			//~ hashValue=hash(kmer);
 			for(uint j(0);j<H;++j){
 				if(hashValue<sketch[j]){
 					sketch[j]=hashValue;
@@ -248,7 +246,7 @@ vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unorde
 	minimizer kmerRC=seq2intStranded(reversecomplement(seq.substr(0,k)));
 	minimizer kmer(min(kmerS,kmerRC));
 	uint i(1);
-	while(filter.unordered_set::count(kmer)==0){
+	while(filter.unordered_set::count(kmer)==0 and i+k<seq.size()){
 		updateMinimizerRC(kmerRC, seq[i+k], k);
 		updateMinimizer(kmerS, seq[i+k], k);
 		kmer=min(kmerRC,kmerS);
@@ -282,30 +280,17 @@ vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unorde
 }
 
 
-//Index all kmers to allow 1 error, nuc is the size of the 'seed' TODO optim without substr and without str
-unordered_multimap<string,string> allKmerMap(uint k,const string& seq, uint nuc){
-	unordered_multimap<string,string> map;
-	for(size_t i(0); i+k<=seq.size(); ++i){
-		string kmer(seq.substr(i,k));
-		map.insert({kmer.substr(0,nuc),kmer.substr(nuc)});
-		kmer=reversecomplement(kmer);
-		map.insert({kmer.substr(0,nuc),kmer.substr(nuc)});
-	}
-	return map;
-}
-
-
-bool isCorrect(uint32_t seq,uint32_t ref, uint n){
+bool isCorrect(minimizer seq, minimizer ref, uint n){
 	for(uint i(1); i<n; ++i){
 		unsigned char s(seq>>(2*(n-i))),r(ref>>(2*(n-i)));
-		seq%=(1<<2*(n-i));
-		ref%=(1<<2*(n-i));
+		seq%=((minimizer)1<<2*(n-i));
+		ref%=((minimizer)1<<2*(n-i));
 		if((s)!=r){
 			if((seq>>(2*(n-i-1)))==r){
-				return (seq%(1<<(2*(n-i-1))))==(ref>>2);
+				return (seq%((minimizer)1<<(2*(n-i-1))))==(ref>>2);
 			}
 			if(s==ref>>(2*(n-i-1))){
-				return (ref%(1<<(2*(n-i-1))))==(seq>>2);
+				return (ref%((minimizer)1<<(2*(n-i-1))))==(seq>>2);
 			}
 			return seq==ref;
 		}
@@ -314,20 +299,20 @@ bool isCorrect(uint32_t seq,uint32_t ref, uint n){
 }
 
 
-unordered_multimap<uint32_t,uint32_t> allKmerMap(const char k,const string& seq, const  char nuc){
-	unordered_multimap<uint32_t,uint32_t> map;
-	uint32_t seed (seq2intStranded(seq.substr(0,nuc)));
-	uint32_t body (seq2intStranded(seq.substr(0,k-nuc)));
-	uint32_t seedRC (seq2intStranded(reversecomplement(seq.substr(0,nuc))));
-	uint32_t bodyRC (seq2intStranded(reversecomplement(seq.substr(0,k-nuc))));
+unordered_multimap<minimizer,minimizer> allKmerMap(const char k,const string& seq, const  char nuc){
+	unordered_multimap<minimizer,minimizer> map;
+	minimizer seed (seq2intStranded(seq.substr(0,nuc)));
+	minimizer body (seq2intStranded(seq.substr(0,k-nuc)));
+	minimizer seedRC (seq2intStranded(reversecomplement(seq.substr(0,nuc))));
+	minimizer bodyRC (seq2intStranded(reversecomplement(seq.substr(0,k-nuc))));
 	for(uint i(0); ; ++i){
 		map.insert({seed,body});
 		map.insert({seedRC,bodyRC});
 		if(i+k<seq.size()){
-			updateMinimizer32(seed,seq[i+nuc],nuc);
-			updateMinimizer32(body,seq[i+k],k-nuc);
-			updateMinimizer32(seedRC,seq[i+nuc],nuc);
-			updateMinimizer32(bodyRC,seq[i+k],k-nuc);
+			updateMinimizer(seed,seq[i+nuc],nuc);
+			updateMinimizer(body,seq[i+k],k-nuc);
+			updateMinimizer(seedRC,seq[i+nuc],nuc);
+			updateMinimizer(bodyRC,seq[i+k],k-nuc);
 		}else{
 			return map;
 		}
@@ -336,23 +321,37 @@ unordered_multimap<uint32_t,uint32_t> allKmerMap(const char k,const string& seq,
 }
 
 
+bool compareMinimizer (minimizer i,minimizer j) { return (hash64(i)<hash64(j)); }
+
+
+
 //return a sketch containing all quasi genomic kmers
-vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<uint32_t,uint32_t> map,uint nuc){
+vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<minimizer,minimizer> map,uint nuc){
+	// cout<<"begin"<<endl;
 	vector<minimizer> sketch;
-	uint32_t seed(seq2intStranded(seq.substr(0,nuc)));
-	uint32_t body(seq2intStranded(seq.substr(nuc,k-nuc)));
+	minimizer seed(seq2intStranded(seq.substr(0,nuc)));
+	minimizer body(seq2intStranded(seq.substr(nuc,k-nuc)));
+	// int2seq(cat(seed,body,nuc), k);
 	uint i(0);
 	do{
+		// cout<<"loopbeg"<<endl;
 		auto range = map.equal_range(seed);
     	for (auto it = range.first; it != range.second; ++it){
 			if(isCorrect(body,it->second,k-nuc)){
 				sketch.push_back(cat(seed,it->second,nuc));
+				// int2seq(cat(seed,it->second,nuc), k);
+				// int2seq(body,k-nuc);
+				// int2seq(it->second,k-nuc);
+				break;
 			}
 		}
+		// cout<<"update"<<endl;
 		if(i+k<seq.size()){
-			updateMinimizer32(seed,seq[i+nuc],nuc);
-			updateMinimizer32(body,seq[i+k],k-nuc);
+			updateMinimizer(seed,seq[i+nuc],nuc);
+			updateMinimizer(body,seq[i+k],k-nuc);
+			// int2seq(cat(seed,body,nuc), k);
 		}else{
+			// cout<<"end"<<endl;
 			return sketch;
 		}
 		++i;
@@ -361,36 +360,12 @@ vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multim
 }
 
 
-//stranded function !!!
-unordered_multimap<string,string> minHashErrors(uint H, uint k, const string& seq, uint nuc){
-	unordered_multimap<string,string> map;
-	vector<uint64_t> sketch(H);
-	vector<minimizer> sketchs(H);
-
-	minimizer kmer(seq2intStranded(seq.substr(0,k)));
-	uint64_t hashValue=hash64(kmer);
-	for(uint j(0); j<H; ++j){
-		sketch[j]=hashValue;
-		sketchs[j]=kmer;
-		hashValue=hash64(hashValue);
+vector<minimizer> smallestGenomicKmers(uint H,uint k, const string& seq,unordered_set <minimizer> set){
+	vector<minimizer> all(allGenomicKmers(k,seq,set));
+	sort(all.begin(),all.end(),compareMinimizer);
+	vector<minimizer> res(H);
+	for(uint i(0);i<H;++i){
+		res[i]=all[i];
 	}
-	for(uint i(1); i+k<seq.size(); ++i){
-		updateMinimizer(kmer, seq[i+k], k);
-		hashValue=hash64(kmer);
-		//hashValue=hash(kmer);
-		for(uint j(0); j<H; ++j){
-			if(hashValue<sketch[j]){
-				sketch[j]=hashValue;
-				sketchs[j]=j;
-			}
-			hashValue=hash64(hashValue);
-		}
-	}
-
-	for(uint i(0); i<H; ++i){
-		string kmer(seq.substr(sketchs[i],k));
-		map.insert({kmer.substr(0,nuc),kmer.substr(nuc)});
-	}
-
-	return map;
+	return res;
 }

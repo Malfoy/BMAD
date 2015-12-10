@@ -62,7 +62,8 @@ uint64_t nuc2int(char c){
 		case 'G': return 2;
 		case 'T': return 3;
 	}
-	cout<<"bug"<<endl;
+	cout<<"bug"<<c<<"!"<<endl;
+	exit(0);
 	return 0;
 }
 
@@ -188,7 +189,6 @@ void int2seq(minimizer min, uint n){
 		min>>=2;
 	}
 	reverse(res.begin(),res.end());
-
 	cout<<res<<endl;
 }
 
@@ -248,7 +248,7 @@ double percentStrandedErrors(uint k, const string& seq, const unordered_multimap
 
 uint sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
 	uint res(0);
-	for(uint i(0); i<sketch1.size(); ++i){
+	for(uint i(0); i<min(sketch1.size(),sketch2.size()); ++i){
 		if(sketch1[i]==sketch2[i]){++res;}
 	}
 	return res;
@@ -268,7 +268,7 @@ uint sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<mi
 }
 
 
-minimizer cat(uint32_t seed, uint32_t body, uint n){
+minimizer cat(minimizer seed, minimizer body, uint n){
 	minimizer res(seed);
 	minimizer nbody=body<<(2*n);
 	return res+=nbody;
@@ -280,7 +280,6 @@ minimizer rc(minimizer min,uint n){
 	for(uint i(0); i<n;++i){
 		res+=(3-(res%4));
 		res>>=2;
-
 	}
 	return res;
 }
