@@ -40,5 +40,6 @@ vector<minimizer> allGenomicKmers(uint k,const string& seq,unordered_set <minimi
 void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous);
 vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<minimizer,minimizer> map,uint nuc);
 unordered_multimap<minimizer,minimizer> allKmerMap(const char k,const string& seq, const  char nuc);
-
+vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<minimizer,minimizer> map,uint nuc);
+unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile, const uint k, const uint seedSize,unordered_multimap<minimizer,minimizer> map);
 #endif

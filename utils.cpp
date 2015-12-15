@@ -86,7 +86,7 @@ string reversecomplement (const string& s){
 }
 
 
-vector<string> getReads(string& ReadFile, uint n){
+vector<string> getReads(const string& ReadFile, uint n){
 	vector<string>reads;
 	string read,header,inter;
 	char c;
@@ -248,8 +248,14 @@ double percentStrandedErrors(uint k, const string& seq, const unordered_multimap
 
 uint sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
 	uint res(0);
+	unordered_set<minimizer> used;
 	for(uint i(0); i<min(sketch1.size(),sketch2.size()); ++i){
-		if(sketch1[i]==sketch2[i]){++res;}
+		if(used.unordered_set::count(sketch1[i])==0){
+			if(sketch1[i]==sketch2[i]){
+				++res;
+				used.insert(sketch2[i]);
+			}
+		}
 	}
 	return res;
 }
@@ -257,29 +263,37 @@ uint sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<mini
 
 uint sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
 	uint res(0);
+	unordered_set<minimizer> used;
 	unordered_set<minimizer> minimizerSet;
 	for(uint i(0); i<sketch1.size(); ++i){
 		minimizerSet.insert(sketch1[i]);
 	}
 	for(uint i(0); i<sketch2.size(); ++i){
-		if(minimizerSet.count(sketch2[i])!=0){++res;}
+		if(used.unordered_set::count(sketch2[i])==0){
+			if(minimizerSet.unordered_set::count(sketch2[i])!=0){
+				++res;
+				used.insert(sketch2[i]);
+			}
+		}
 	}
 	return res;
 }
 
 
 minimizer cat(minimizer seed, minimizer body, uint n){
-	minimizer res(seed);
-	minimizer nbody=body<<(2*n);
-	return res+=nbody;
+	minimizer res(seed<<(2*n));
+	return res+=body;
 }
 
 
 minimizer rc(minimizer min,uint n){
 	minimizer res(0);
+	minimizer offset(1);
+	offset<<=(2*n-2);
 	for(uint i(0); i<n;++i){
-		res+=(3-(res%4));
-		res>>=2;
+		res+=(3-(min%4))*offset;
+		min>>=2;
+		offset>>=2;
 	}
 	return res;
 }
@@ -287,6 +301,16 @@ minimizer rc(minimizer min,uint n){
 
 minimizer getRepresent(minimizer kmer, uint n){
 	return (min(kmer,rc(kmer,n)));
+}
+
+
+minimizer getEnd(minimizer kmer, uint n){
+	return kmer%((minimizer)1<<(2*n));
+}
+
+
+minimizer getBegin(minimizer kmer, uint n){
+	return (kmer>>(2*n));
 }
 
 

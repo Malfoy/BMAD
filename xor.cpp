@@ -8,9 +8,9 @@ uint32_t xor32(uint32_t y){
 	y^=(y<<13); y^=(y>>17); return (y^=(y<<15));
 }
 
-uint32_t xor64( uint32_t x){
-	static uint32_t y = 362436069;
-	uint32_t t = (x^(x<<10)); x = y; return y = (y^(y>>10))^(t^(t>>13));
+uint64_t xor64( uint64_t x){
+	static uint64_t y = 362436069;
+	uint64_t t = (x^(x<<10)); x = y; return y = (y^(y>>10))^(t^(t>>13));
 }
 
 uint32_t xor96(uint32_t x){
@@ -84,19 +84,39 @@ uint64_t xorshift64(uint64_t x) {
 }
 
 
+
+uint64_t korenXor(uint64_t x){
+	x ^= (x << 21);
+	x ^= (x >> 35);
+	x ^= (x << 4);
+	return x;
+}
+
+
 uint64_t hash64( uint64_t u ){
 	// return xorshift64(u);
-  uint64_t v = u * 3935559000370003845 + 2691343689449507681;
+	return korenXor(u);
+	// return murmur3_32(u, 69);
+	uint64_t v = u * 3935559000370003845 + 2691343689449507681;
 
-  v ^= v >> 21;
-  v ^= v << 37;
-  v ^= v >>  4;
+	v ^= v >> 21;
+	v ^= v << 37;
+	v ^= v >>  4;
+	v *= 4768777513237032717;
 
-  v *= 4768777513237032717;
+	v ^= v << 20;
+	v ^= v >> 41;
+	v ^= v <<  5;
 
-  v ^= v << 20;
-  v ^= v >> 41;
-  v ^= v <<  5;
+	return v;
+}
 
-  return v;
-  }
+
+uint64_t iterHash64( uint64_t u , int n){
+	if(n==0){
+		return hash64(u);
+	}
+	else{
+		return hash64(iterHash64(u, n-1));
+	}
+}
