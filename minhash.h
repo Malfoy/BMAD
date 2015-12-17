@@ -41,5 +41,13 @@ void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous);
 vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<minimizer,minimizer> map,uint nuc);
 unordered_multimap<minimizer,minimizer> allKmerMap(const char k,const string& seq, const  char nuc);
 vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<minimizer,minimizer> map,uint nuc);
+unordered_map<minimizer,uint8_t> kmerCounting(const string& readFile, const uint k);
 unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile, const uint k, const uint seedSize,unordered_multimap<minimizer,minimizer> map);
+unordered_multimap<minimizer,minimizer> getSolidMap(unordered_map<minimizer,uint8_t>& count, uint T, uint k, uint nuc);
+unordered_set<minimizer> getSolidSet(unordered_map<minimizer,uint8_t>& count, uint T);
+
+
+
+
+
 #endif

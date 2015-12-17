@@ -86,11 +86,51 @@ string reversecomplement (const string& s){
 }
 
 
-vector<string> getReads(const string& ReadFile, uint n){
+uint interSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	uint res(0);
+	for (auto it=set1.begin(); it!=set1.end(); ++it){
+		if(set2.count(*it)!=0){
+			++res;
+		}
+	}
+	return res;
+}
+
+
+uint unionSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	uint res(0);
+	for (auto it=set2.begin(); it!=set2.end(); ++it){
+			++res;
+	}
+	for (auto it=set1.begin(); it!=set1.end(); ++it){
+		if(set2.count(*it)==0){
+			++res;
+		}
+	}
+	return res;
+}
+
+uint inANotInB(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	uint res(0);
+	for (auto it=set1.begin(); it!=set1.end(); ++it){
+		if(set2.count(*it)==0){
+			++res;
+		}
+	}
+	return res;
+}
+
+
+double jaccardSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	// cout<<interSet(set1,set2)<<" "<<unionSet(set1, set2)<<endl;
+	return (double)interSet(set1,set2)/(double)unionSet(set1, set2);
+}
+
+
+vector<string> getReads(ifstream& readFile, uint n){
 	vector<string>reads;
 	string read,header,inter;
 	char c;
-	ifstream readFile(ReadFile);
 	for(uint i(0);i<n;++i){
 		getline(readFile,header);
 		getline(readFile,read);

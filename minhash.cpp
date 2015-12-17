@@ -412,7 +412,8 @@ vector<minimizer> smallestGenomicKmers(uint H,uint k, const string& seq,unordere
 
 
 unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile, const uint k, const uint seedSize,unordered_multimap<minimizer,minimizer> map){
-	vector<string> reads(getReads(readFile, 1000));
+	ifstream readS(readFile,ios::in);
+	vector<string> reads(getReads(readS, 1000));
 	unordered_map<minimizer,vector<readNumber>> min2reads;
 	vector<minimizer> sketch;
 	readNumber rn(0);
@@ -426,12 +427,76 @@ unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile,
 }
 
 
+unordered_map<minimizer,uint8_t> kmerCounting(const string& readFile, const uint k){
+	unordered_map<minimizer,uint8_t> count;
+	string seq;
+	ifstream readS(readFile);
+	vector<string> reads;
+	while(!readS.eof()){
+		reads=(getReads(readS, 1000));
+		// cout<<reads.size()<<endl;
+		for(uint ii(0);ii<reads.size();++ii){
+			seq=reads[ii];
+			uint i(0);
+			minimizer kmerS(seq2intStranded((seq.substr(0,k))));
+			minimizer kmerRC(rc(kmerS,k));
+			minimizer kmer(min(kmerRC,kmerS));
+			bool end(false);
+			do{
+				count[kmer]=min(count[kmer]+1,200);
+				if(i+k<seq.size()){
+					updateMinimizer(kmerS, seq[i+k], k);
+					updateMinimizerRC(kmerRC, seq[i+k], k);
+					kmer=min(kmerRC,kmerS);
+					++i;
+				}else{
+					end=true;
+				}
+			}while(!end);
+		}
+	}
+	return count;
+}
+
+
+unordered_set<minimizer> getSolidSet(unordered_map<minimizer,uint8_t>& count, uint T){
+	unordered_set<minimizer> solid;
+	for ( auto it = count.begin(); it != count.end(); ++it ){
+		// cout<<it->second<<endl;
+		if(it->second>=T){
+			// cout<<"lol"<<endl;
+			solid.insert(it->first);
+		}
+	}
+	return solid;
+}
+
+
+unordered_multimap<minimizer,minimizer> getSolidMap(unordered_map<minimizer,uint8_t>& count, uint T, uint k, uint nuc){
+	unordered_multimap<minimizer,minimizer> map;
+	for ( auto it = count.begin(); it != count.end(); ++it ){
+		if(it->second>=T){
+			minimizer kmer(it->first);
+			minimizer seed(getBegin(kmer, k-nuc));
+			minimizer body(getEnd(kmer, k-nuc));
+			minimizer kmerRC (rc(kmer,k));
+			minimizer seedRC(getBegin(kmerRC, k-nuc));
+			minimizer bodyRC(getEnd(kmerRC, k-nuc));
+			map.insert({seed,body});
+			map.insert({seedRC,bodyRC});
+		}
+	}
+	// count={};
+	return map;
+}
+
+
 void bench(){
 	uint H(1000);
 	uint nuc(10);
 	uint k(11),part(2);
-	string readFile1("reads_virus_10k_0001.ref");
-	string readFile2("reads.fa");
+	ifstream readFile1("reads_virus_10k_0001.ref");
+	ifstream readFile2("reads.fa");
 	vector<string> V1,Vref;
 	Vref=getReads(readFile1, 1);
 	string ref(Vref[0]);
