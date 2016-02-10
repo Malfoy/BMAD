@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include "utils.h"
+#include "minhash.h"
 
 
 using namespace std;
@@ -27,10 +28,10 @@ char randNuc(){
 }
 
 
-string randomSeq(uint length){
+string randomSeq(uint64_t length){
 	auto randchar=[]() -> char{
 		const char charset[] ="ATCG";
-		const uint max_index = (sizeof(charset) - 1);
+		const uint64_t max_index = (sizeof(charset) - 1);
 		return charset[ rand() % max_index ];
 	};
 	string str(length,0);
@@ -86,8 +87,8 @@ string reversecomplement (const string& s){
 }
 
 
-uint interSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
-	uint res(0);
+uint64_t interSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	uint64_t res(0);
 	for (auto it=set1.begin(); it!=set1.end(); ++it){
 		if(set2.count(*it)!=0){
 			++res;
@@ -97,8 +98,8 @@ uint interSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
 }
 
 
-uint unionSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
-	uint res(0);
+uint64_t unionSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	uint64_t res(0);
 	for (auto it=set2.begin(); it!=set2.end(); ++it){
 			++res;
 	}
@@ -110,8 +111,8 @@ uint unionSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
 	return res;
 }
 
-uint inANotInB(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
-	uint res(0);
+uint64_t inANotInB(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2){
+	uint64_t res(0);
 	for (auto it=set1.begin(); it!=set1.end(); ++it){
 		if(set2.count(*it)==0){
 			++res;
@@ -127,11 +128,11 @@ double jaccardSet(unordered_set<minimizer>& set1,unordered_set<minimizer>& set2)
 }
 
 
-vector<string> getReads(ifstream& readFile, uint n){
+vector<string> getReads(ifstream& readFile, uint64_t n){
 	vector<string>reads;
 	string read,header,inter;
 	char c;
-	for(uint i(0);i<n;++i){
+	for(uint64_t i(0);i<n;++i){
 		getline(readFile,header);
 		getline(readFile,read);
 	point:
@@ -139,7 +140,7 @@ vector<string> getReads(ifstream& readFile, uint n){
 		if(c=='>'){
 			if(read.size()>2){
 				bool fail(false);
-				for(uint j(0);(j)<read.size();++j){
+				for(uint64_t j(0);(j)<read.size();++j){
 					if(read[j]!='A' and read[j]!='C' and read[j]!='T' and read[j]!='G'){
 						fail=true;
 						break;
@@ -158,7 +159,7 @@ vector<string> getReads(ifstream& readFile, uint n){
 			}else{
 				if(read.size()>2){
 					bool fail(false);
-					for(uint j(0);(j)<read.size();++j){
+					for(uint64_t j(0);(j)<read.size();++j){
 						if(read[j]!='A' and read[j]!='C' and read[j]!='T' and read[j]!='G'){
 							fail=true;
 							break;
@@ -173,6 +174,54 @@ vector<string> getReads(ifstream& readFile, uint n){
 		}
 	}
 	return reads;
+}
+
+
+string getRead(ifstream& readFile){
+	string read,header,inter;
+	char c;
+	for(uint64_t i(0);i<1;++i){
+		getline(readFile,header);
+		getline(readFile,read);
+	point:
+		c=readFile.peek();
+		if(c=='>'){
+			if(read.size()>2){
+				bool fail(false);
+				for(uint64_t j(0);(j)<read.size();++j){
+					if(read[j]!='A' and read[j]!='C' and read[j]!='T' and read[j]!='G'){
+						fail=true;
+						break;
+					}
+				}
+				if(!fail){
+					return read;
+				}
+			}
+			read="";
+		}else{
+			if(!readFile.eof()){
+				getline(readFile,inter);
+				read+=inter;
+				goto point;
+			}else{
+				if(read.size()>2){
+					bool fail(false);
+					for(uint64_t j(0);(j)<read.size();++j){
+						if(read[j]!='A' and read[j]!='C' and read[j]!='T' and read[j]!='G'){
+							fail=true;
+							break;
+						}
+					}
+					if(!fail){
+							return read;
+					}
+				}
+				return "";
+			}
+		}
+	}
+	return "";
 }
 
 
@@ -198,14 +247,14 @@ string getRepresent2(const string& s){
 minimizer seq2int(const string& seq){
 	string str(getRepresent(seq));
 	minimizer res(0);
-	for(uint i(0);i<seq.size();++i){
+	for(uint64_t i(0);i<seq.size();++i){
 		res<<=2;
 		res+=nuc2int(str[i]);
 	}
 	return res;
 }
 
-char int2nuc(uint n){
+char int2nuc(uint64_t n){
 switch(n){
 	case 0:
 		return 'A';
@@ -220,10 +269,10 @@ return 'X';
 }
 
 
-void int2seq(minimizer min, uint n){
+void int2seq(minimizer min, uint64_t n){
 	string res;
-	uint nuc;
-	for(uint i(0);i<n;++i){
+	uint64_t nuc;
+	for(uint64_t i(0);i<n;++i){
 		nuc=min%4;
 		res+=int2nuc(nuc);
 		min>>=2;
@@ -235,7 +284,7 @@ void int2seq(minimizer min, uint n){
 
 minimizer seq2intStranded(const string& seq){
 	minimizer res(0);
-	for(uint i(0);i<seq.size();++i){
+	for(uint64_t i(0);i<seq.size();++i){
 		res<<=2;
 		res+=nuc2int(seq[i]);
 	}
@@ -244,14 +293,14 @@ minimizer seq2intStranded(const string& seq){
 
 
 bool equalStr(const string& seq1, const string& seq2){
-	uint size(min(seq1.size(),seq2.size()));
+	uint64_t size(min(seq1.size(),seq2.size()));
 	return (seq1.substr(0,size))==seq2.substr(0,size);
 }
 
 
 //rewrite with ternary operator
 bool isCorrect(const string& seq,const string& ref){
-	for(uint i(0); i<seq.size(); ++i){
+	for(uint64_t i(0); i<seq.size(); ++i){
 		if(seq[i]!=ref[i]){
 			if(seq[i+1]==ref[i]){
 				return equalStr(seq.substr(i+2),ref.substr(i+1));
@@ -266,11 +315,11 @@ bool isCorrect(const string& seq,const string& ref){
 }
 
 
-double percentStrandedErrors(uint k, const string& seq, const unordered_multimap<string, string>& genomicKmers, char nuc){
+double percentStrandedErrors(uint64_t k, const string& seq, const unordered_multimap<string, string>& genomicKmers, char nuc){
 	double inter(0);
 	string kmer;
 	kmer.reserve(k);
-	uint i(0);
+	uint64_t i(0);
 	for(; i+k<=seq.size(); ++i){
 		kmer=seq.substr(i,k);
 		if(kmer.size()!=k){cout<<"wtf"<<endl;}
@@ -286,10 +335,10 @@ double percentStrandedErrors(uint k, const string& seq, const unordered_multimap
 }
 
 
-uint sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
-	uint res(0);
+uint64_t sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
+	uint64_t res(0);
 	unordered_set<minimizer> used;
-	for(uint i(0); i<min(sketch1.size(),sketch2.size()); ++i){
+	for(uint64_t i(0); i<min(sketch1.size(),sketch2.size()); ++i){
 		if(used.unordered_set::count(sketch1[i])==0){
 			if(sketch1[i]==sketch2[i]){
 				++res;
@@ -301,14 +350,14 @@ uint sketchOrderedComparison(const vector<minimizer>& sketch1, const vector<mini
 }
 
 
-uint sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
-	uint res(0);
+uint64_t sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<minimizer>& sketch2){
+	uint64_t res(0);
 	unordered_set<minimizer> used;
 	unordered_set<minimizer> minimizerSet;
-	for(uint i(0); i<sketch1.size(); ++i){
+	for(uint64_t i(0); i<sketch1.size(); ++i){
 		minimizerSet.insert(sketch1[i]);
 	}
-	for(uint i(0); i<sketch2.size(); ++i){
+	for(uint64_t i(0); i<sketch2.size(); ++i){
 		if(used.unordered_set::count(sketch2[i])==0){
 			if(minimizerSet.unordered_set::count(sketch2[i])!=0){
 				++res;
@@ -320,17 +369,17 @@ uint sketchUnorderedComparison(const vector<minimizer>& sketch1, const vector<mi
 }
 
 
-minimizer cat(minimizer seed, minimizer body, uint n){
+minimizer cat(minimizer seed, minimizer body, uint64_t n){
 	minimizer res(seed<<(2*n));
 	return res+=body;
 }
 
 
-minimizer rc(minimizer min,uint n){
+minimizer rc(minimizer min,uint64_t n){
 	minimizer res(0);
 	minimizer offset(1);
 	offset<<=(2*n-2);
-	for(uint i(0); i<n;++i){
+	for(uint64_t i(0); i<n;++i){
 		res+=(3-(min%4))*offset;
 		min>>=2;
 		offset>>=2;
@@ -339,23 +388,23 @@ minimizer rc(minimizer min,uint n){
 }
 
 
-minimizer getRepresent(minimizer kmer, uint n){
+minimizer getRepresent(minimizer kmer, uint64_t n){
 	return (min(kmer,rc(kmer,n)));
 }
 
 
-minimizer getEnd(minimizer kmer, uint n){
+minimizer getEnd(minimizer kmer, uint64_t n){
 	return kmer%((minimizer)1<<(2*n));
 }
 
 
-minimizer getBegin(minimizer kmer, uint n){
+minimizer getBegin(minimizer kmer, uint64_t n){
 	return (kmer>>(2*n));
 }
 
 
-uint sketchUnorderedComparisonError(const unordered_multimap<string, string>& map1, const unordered_multimap<string, string>& map2){
-	uint res(0);
+uint64_t sketchUnorderedComparisonError(const unordered_multimap<string, string>& map1, const unordered_multimap<string, string>& map2){
+	uint64_t res(0);
 	string beg,end;
 	for (auto it=map1.begin(); it!=map1.end(); ++it){
 		beg=it->first;
@@ -380,4 +429,48 @@ double scoreFromAlignment(const string& seq1,const string& seq2){
 	}
 	double res((100*match)/(seq1.size()));
 	return res;
+}
+
+
+void benchDistances(){
+	ifstream refs("reads_virus_10k_0001.ref");
+	ifstream readFile("reads.fa");
+	string ref(getReads(refs,1)[0]);
+	uint64_t seedSize(5);
+	vector<string> V1=getReads(readFile,10);
+	// vector<string> V1={randomSeq(5000),randomSeq(5000)};
+	// unordered_multimap<minimizer,minimizer> map(allKmerMap(k,ref, seedSize));
+	// unordered_map<minimizer,vector<readNumber>> min2read(indexReadSet(readFile,k,seedSize,map));
+	for(uint64_t k(7);k<25;k+=2){
+		uint64_t res(0),res2(0),res3(0),res4(0);
+		unordered_multimap<minimizer,minimizer> quasi(allKmerMap(k,ref,seedSize));
+		unordered_set<minimizer> solidKmers(allKmerSet(k,ref));
+		for(uint64_t i(0);i+1<V1.size();i+=1){
+			string seq1(V1[i]),seq2(V1[i+1]);
+			vector<minimizer> sketch9(allQuasiGenomicKmers(k,seq1,quasi,seedSize)),sketch10(allQuasiGenomicKmers(k,seq2,quasi,seedSize));
+			res+=(sketchUnorderedComparison(sketch9,sketch10));
+			vector<minimizer> sketch7(allGenomicKmers(k,seq1,solidKmers)),sketch8(allGenomicKmers(k,seq2,solidKmers));
+			res4+=(sketchUnorderedComparison(sketch7,sketch8));
+		}
+		// cout<<res<<endl;
+		unordered_map<minimizer,uint64_t > count(kmerCounting("reads.fa", k));
+		// cout<<"coutning"<<endl;
+		quasi=getSolidMap(count,2,k, seedSize);
+		unordered_set<minimizer>  solidKmers2=getSolidSet(count,2);
+		for(uint64_t i(0);i+1<V1.size();i+=1){
+			string seq1(V1[i]),seq2(V1[i+1]);
+			vector<minimizer> sketch9(allQuasiGenomicKmers(k,seq1,quasi,seedSize)),sketch10(allQuasiGenomicKmers(k,seq2,quasi,seedSize));
+			vector<minimizer> sketch7(allGenomicKmers(k,seq1,solidKmers2)),sketch8(allGenomicKmers(k,seq2,solidKmers2));
+			res3+=(sketchUnorderedComparison(sketch7,sketch8));
+			res2+=(sketchUnorderedComparison(sketch9,sketch10));
+		}
+		cout<<"k: "<<k<<endl
+		<<"\% missed genomic kmers "<<100*(double)inANotInB(solidKmers, solidKmers2)/solidKmers.size()<<"\%"<<endl
+		<<"\% kmer above threshold but not genomic "<<100*(double)inANotInB(solidKmers2, solidKmers)/solidKmers2.size()<<"\%"<<endl
+		<<"quasi genomic kmer with ref "<<res/V1.size()<<endl
+		<<"genomic kmer with ref "<<res4/V1.size()<<endl
+		<<"quasi genomic kmer without ref "<<res2/V1.size()<<endl
+		<<"genomic kmer without ref "<<res3/V1.size()<<endl
+		<<endl;
+	}
 }

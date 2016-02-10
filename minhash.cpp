@@ -6,7 +6,7 @@
 using namespace std;
 
 
-void updateMinimizer(minimizer&	min, char nuc, uint k){
+void updateMinimizer(minimizer&	min, char nuc, uint64_t k){
 	minimizer offset(1);
 	offset<<=(2*k);
 	min<<=2;
@@ -15,7 +15,7 @@ void updateMinimizer(minimizer&	min, char nuc, uint k){
 }
 
 
-void updateMinimizer32(uint32_t&	min, char nuc, uint k){
+void updateMinimizer32(uint64_t &	min, char nuc, uint64_t k){
 	minimizer offset(1);
 	offset<<=(2*k);
 	min<<=2;
@@ -24,31 +24,31 @@ void updateMinimizer32(uint32_t&	min, char nuc, uint k){
 }
 
 
-void updateMinimizerEnd(minimizer&	min, char nuc, uint k){
+void updateMinimizerEnd(minimizer&	min, char nuc, uint64_t k){
 	min>>=2;
 	min+=(nuc2int(nuc)<<(2*k-2));
 }
 
 
-void updateMinimizerRC(minimizer&	min, char nuc, uint k){
+void updateMinimizerRC(minimizer&	min, char nuc, uint64_t k){
 	min>>=2;
 	min+=((3-nuc2int(nuc))<<(2*k-2));
 }
 
 
-void updateMinimizerRC32(uint32_t&	min, char nuc, uint k){
+void updateMinimizerRC32(uint64_t &	min, char nuc, uint64_t k){
 	min>>=2;
 	min+=((3-nuc2int(nuc))<<(2*k-2));
 }
 
 
 //return a sketch containing all kmers
-vector<minimizer> allKmer(uint k,const string& seq){
+vector<minimizer> allKmer(uint64_t k,const string& seq){
 	vector<minimizer> sketch;
 	minimizer kmerS(seq2intStranded((seq.substr(0,k))));
 	minimizer kmerRC(seq2intStranded((reversecomplement(seq.substr(0,k)))));
 	minimizer kmer(min(kmerRC,kmerS));
-	uint i(0);
+	uint64_t i(0);
 	do{
 		sketch.push_back(kmer);
 		if(i+k<seq.size()){
@@ -65,12 +65,12 @@ vector<minimizer> allKmer(uint k,const string& seq){
 
 
 //return a sketch containing all genomic kmers
-vector<minimizer> allGenomicKmers(uint k,const string& seq,unordered_set <minimizer> set){
+vector<minimizer> allGenomicKmers(uint64_t k,const string& seq,const unordered_set <minimizer>& set){
 	vector<minimizer> sketch;
 	minimizer kmerS(seq2intStranded((seq.substr(0,k))));
 	minimizer kmerRC(seq2intStranded((reversecomplement(seq.substr(0,k)))));
 	minimizer kmer(min(kmerRC,kmerS));
-	uint i(0);
+	uint64_t i(0);
 	do{
 		if(set.unordered_set::count(kmer)!=0){
 			sketch.push_back(kmer);
@@ -89,12 +89,12 @@ vector<minimizer> allGenomicKmers(uint k,const string& seq,unordered_set <minimi
 
 
 //return a set containing all kmers
-unordered_set<minimizer> allKmerSet(uint k,const string& seq){
+unordered_set<minimizer> allKmerSet(uint64_t k,const string& seq){
 	unordered_set<minimizer> set;
 	minimizer kmerS(seq2intStranded((seq.substr(0,k))));
 	minimizer kmerRC(seq2intStranded((reversecomplement(seq.substr(0,k)))));
 	minimizer kmer(min(kmerRC,kmerS));
-	uint i(0);
+	uint64_t i(0);
 	do{
 		set.insert(kmer);
 		if(i+k<seq.size()){
@@ -111,17 +111,17 @@ unordered_set<minimizer> allKmerSet(uint k,const string& seq){
 
 
 //compute the sketch of SEQ with H minimizers of size K, the read is separated in PART parts with H/PART minimizers each
-vector<minimizer> minHashPart(uint H, uint k,const string& seq, uint part){
+vector<minimizer> minHashPart(uint64_t H, uint64_t k,const string& seq, uint64_t part){
 	vector<minimizer> result;
-	uint size(seq.size()/part);
-	for(uint i(0);i<part;++i){
+	uint64_t size(seq.size()/part);
+	for(uint64_t i(0);i<part;++i){
 		minHash2(H/part,k,seq.substr(i*size,size+k),result);
 	}
 	return result;
 }
 
 
-void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous){
+void minHash2(uint64_t H, uint64_t k, const string& seq, vector<minimizer>& previous){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
 	uint64_t hashValue;
@@ -131,12 +131,12 @@ void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous){
 	minimizer kmer(min(kmerS,kmerRC));
 	//	hashValue=hash(kmer);
 	hashValue=hash64(kmer);
-	for(uint j(0); j<H; ++j){
+	for(uint64_t j(0); j<H; ++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
 		hashValue=hash64(hashValue);
 	}
-	for(uint i(1); i+k<seq.size(); ++i){
+	for(uint64_t i(1); i+k<seq.size(); ++i){
 		updateMinimizer(kmerS, seq[i+k], k);
 		updateMinimizerRC(kmerRC, seq[i+k], k);
 		// minimizer kmerS(seq2intStranded(seq.substr(i,k)));
@@ -144,7 +144,7 @@ void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous){
 		kmer=(min(kmerS,kmerRC));
 		hashValue=hash64(kmer);
 		//		hashValue=hash(kmer);
-		for(uint j(0); j<H; ++j){
+		for(uint64_t j(0); j<H; ++j){
 			if(hashValue<sketch[j]){
 				sketch[j]=hashValue;
 				sketchs[j]=kmer;
@@ -157,7 +157,7 @@ void minHash2(uint H, uint k, const string& seq, vector<minimizer>& previous){
 
 
 //compute H minimizers of size k from seq, minhash vanilla
-vector<minimizer> minHash(uint H, uint k, const string& seq){
+vector<minimizer> minHash(uint64_t H, uint64_t k, const string& seq){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
 	uint64_t hashValue;
@@ -172,12 +172,12 @@ vector<minimizer> minHash(uint H, uint k, const string& seq){
 	// int2seq(kmer, 16);
 	// cin.get();
 
-	for(uint j(0); j<H; ++j){
+	for(uint64_t j(0); j<H; ++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
 		hashValue=hash64(hashValue);
 	}
-	for(uint i(1); i+k<seq.size(); ++i){
+	for(uint64_t i(1); i+k<seq.size(); ++i){
 		updateMinimizer(kmerS, seq[i+k], k);
 		updateMinimizerRC(kmerRC, seq[i+k], k);
 		// minimizer kmerS(seq2intStranded(seq.substr(i,k)));
@@ -187,7 +187,7 @@ vector<minimizer> minHash(uint H, uint k, const string& seq){
 		// cin.get();
 		hashValue=hash64(kmer);
 		//hashValue=hash(kmer);
-		for(uint j(0); j<H; ++j){
+		for(uint64_t j(0); j<H; ++j){
 			if(hashValue<sketch[j]){
 				sketch[j]=hashValue;
 				sketchs[j]=kmer;
@@ -199,7 +199,7 @@ vector<minimizer> minHash(uint H, uint k, const string& seq){
 }
 
 
-void minHash3(uint H, uint k,const string& seq, vector<minimizer>& previous, const unordered_set<minimizer>& filter){
+void minHash3(uint64_t H, uint64_t k,const string& seq, vector<minimizer>& previous, const unordered_set<minimizer>& filter){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
 	uint64_t hashValue;
@@ -208,20 +208,20 @@ void minHash3(uint H, uint k,const string& seq, vector<minimizer>& previous, con
 	minimizer kmerRC=seq2intStranded(reversecomplement(seq.substr(0,k)));
 	minimizer kmer(min(kmerS,kmerRC));
 	hashValue=hash64(kmer);
-	for(uint j(0);j<H;++j){
+	for(uint64_t j(0);j<H;++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
 		hashValue=hash64(hashValue);
 	}
 
-	for(uint i(1);i+k<seq.size();++i){
+	for(uint64_t i(1);i+k<seq.size();++i){
 		updateMinimizerRC(kmerRC, seq[i+k], k);
 		updateMinimizer(kmerS, seq[i+k], k);
 		kmer=min(kmerRC,kmerS);
 
 		if(filter.unordered_set::count(kmer)!=0){
 			hashValue=hash64(kmer);
-			for(uint j(0);j<H;++j){
+			for(uint64_t j(0);j<H;++j){
 				if(hashValue<sketch[j]){
 					sketch[j]=hashValue;
 					sketchs[j]=kmer;
@@ -235,7 +235,7 @@ void minHash3(uint H, uint k,const string& seq, vector<minimizer>& previous, con
 
 
 //Compute a sketch of SEQ, with H minimizer of size K , but only kmers in the set FILTER are considered
-vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unordered_set<minimizer>& filter){
+vector<minimizer> minHashGenomic(uint64_t H, uint64_t k, const string& seq, const unordered_set<minimizer>& filter){
 	vector<uint64_t> sketch(H);
 	vector<minimizer> sketchs(H);
 	uint64_t hashValue;
@@ -243,7 +243,7 @@ vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unorde
 	minimizer kmerS=seq2intStranded(seq.substr(0,k));
 	minimizer kmerRC=seq2intStranded(reversecomplement(seq.substr(0,k)));
 	minimizer kmer(min(kmerS,kmerRC));
-	uint i(1);
+	uint64_t i(1);
 	while(filter.unordered_set::count(kmer)==0 and i+k<seq.size()){
 		updateMinimizerRC(kmerRC, seq[i+k], k);
 		updateMinimizer(kmerS, seq[i+k], k);
@@ -251,7 +251,7 @@ vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unorde
 		++i;
 	}
 	hashValue=hash64(kmer);
-	for(uint j(0);j<H;++j){
+	for(uint64_t j(0);j<H;++j){
 		sketch[j]=hashValue;
 		sketchs[j]=kmer;
 		hashValue=hash64(hashValue);
@@ -265,7 +265,7 @@ vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unorde
 		if(filter.unordered_set::count(kmer)!=0){
 			hashValue=hash64(kmer);
 			//~ hashValue=hash(kmer);
-			for(uint j(0);j<H;++j){
+			for(uint64_t j(0);j<H;++j){
 				if(hashValue<sketch[j]){
 					sketch[j]=hashValue;
 					sketchs[j]=kmer;
@@ -278,9 +278,9 @@ vector<minimizer> minHashGenomic(uint H, uint k, const string& seq, const unorde
 }
 
 
-bool isCorrect(minimizer seq, minimizer ref, uint n){
+bool isCorrect(minimizer seq, minimizer ref, uint64_t n){
 	// return true;
-	for(uint i(1); i<n; ++i){
+	for(uint64_t i(1); i<n; ++i){
 		unsigned char s(seq>>(2*(n-i))),r(ref>>(2*(n-i)));
 		minimizer offset2 (1<<(2*(n-i)));
 		seq%=(offset2);
@@ -300,7 +300,7 @@ bool isCorrect(minimizer seq, minimizer ref, uint n){
 }
 
 //TODO optimize with array
-unordered_multimap<minimizer,minimizer> allKmerMap(const char k,const string& seq, const  char nuc){
+unordered_multimap<minimizer,minimizer> allKmerMap(const uint64_t k,const string& seq, const  uint64_t nuc){
 	unordered_multimap<minimizer,minimizer> map;
 	minimizer kmer (seq2intStranded(seq.substr(0,k)));
 	minimizer kmerRC (rc(kmer,k));
@@ -315,7 +315,7 @@ unordered_multimap<minimizer,minimizer> allKmerMap(const char k,const string& se
 	// int2seq(seedRC, nuc);
 	// int2seq(bodyRC, k-nuc);
 	// cin.get();
-	for(uint i(0); ; ++i){
+	for(uint64_t i(0); ; ++i){
 		map.insert({seed,body});
 		map.insert({seedRC,bodyRC});
 		if(i+k<seq.size()){
@@ -349,7 +349,7 @@ bool compareMinimizer (minimizer i,minimizer j) { return (hash64(i)<hash64(j)); 
 
 
 //return a sketch containing all quasi genomic kmers
-vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multimap<minimizer,minimizer> map,uint nuc){
+vector<minimizer> allQuasiGenomicKmers(uint64_t k,const string& seq,const unordered_multimap<minimizer,minimizer>& map,uint64_t nuc){
 	// cout<<"begin"<<endl;
 	vector<minimizer> sketch;
 	vector<minimizer> tmp;
@@ -358,7 +358,7 @@ vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multim
 	// int2seq(seed,nuc);
 	// int2seq(body,k-nuc);
 	// int2seq(seq2intStranded(seq.substr(0,k)),k);
-	uint i(0);
+	uint64_t i(0);
 	do{
 		// cout<<"loopbeg"<<endl;
 		tmp={};
@@ -366,7 +366,7 @@ vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multim
     	for (auto it = range.first; it != range.second; ++it){
 			if(isCorrect(body,it->second,k-nuc)){
 				tmp.push_back(getRepresent(cat(seed,it->second,k-nuc),k));
-
+				
 				// cout<<"accepted"<<endl;
 				// int2seq(cat(seed,it->second,nuc), k);
 				// int2seq(cat(seed,body,nuc), k);
@@ -400,26 +400,26 @@ vector<minimizer> allQuasiGenomicKmers(uint k,const string& seq,unordered_multim
 }
 
 
-vector<minimizer> smallestGenomicKmers(uint H,uint k, const string& seq,unordered_set <minimizer> set){
+vector<minimizer> smallestGenomicKmers(uint64_t H,uint64_t k, const string& seq,unordered_set <minimizer> set){
 	vector<minimizer> all(allGenomicKmers(k,seq,set));
 	sort(all.begin(),all.end(),compareMinimizer);
 	vector<minimizer> res(H);
-	for(uint i(0);i<H;++i){
+	for(uint64_t i(0);i<H;++i){
 		res[i]=all[i];
 	}
 	return res;
 }
 
 
-unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile, const uint k, const uint seedSize,unordered_multimap<minimizer,minimizer> map){
+unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile, const uint64_t k, const uint64_t seedSize,unordered_multimap<minimizer,minimizer> map){
 	ifstream readS(readFile,ios::in);
 	vector<string> reads(getReads(readS, 1000));
 	unordered_map<minimizer,vector<readNumber>> min2reads;
 	vector<minimizer> sketch;
 	readNumber rn(0);
-	for(uint i(0);i<reads.size();++i,++rn){
+	for(uint64_t i(0);i<reads.size();++i,++rn){
 		sketch=allQuasiGenomicKmers(k,reads[i],map,seedSize);
-		for(uint ii(0);ii<sketch.size();++ii){
+		for(uint64_t ii(0);ii<sketch.size();++ii){
 			(min2reads[sketch[ii]]).push_back(rn);
 		}
 	}
@@ -427,23 +427,23 @@ unordered_map<minimizer,vector<readNumber>> indexReadSet(const string& readFile,
 }
 
 
-unordered_map<minimizer,uint8_t> kmerCounting(const string& readFile, const uint k){
-	unordered_map<minimizer,uint8_t> count;
+unordered_map<minimizer,uint64_t > kmerCounting(const string& readFile, const uint64_t k){
+	unordered_map<minimizer,uint64_t > count;
 	string seq;
 	ifstream readS(readFile);
 	vector<string> reads;
 	while(!readS.eof()){
 		reads=(getReads(readS, 1000));
 		// cout<<reads.size()<<endl;
-		for(uint ii(0);ii<reads.size();++ii){
+		for(uint64_t ii(0);ii<reads.size();++ii){
 			seq=reads[ii];
-			uint i(0);
+			uint64_t i(0);
 			minimizer kmerS(seq2intStranded((seq.substr(0,k))));
 			minimizer kmerRC(rc(kmerS,k));
 			minimizer kmer(min(kmerRC,kmerS));
 			bool end(false);
 			do{
-				count[kmer]=min(count[kmer]+1,200);
+				count[kmer]=min(count[kmer]+1,(uint64_t)200);
 				if(i+k<seq.size()){
 					updateMinimizer(kmerS, seq[i+k], k);
 					updateMinimizerRC(kmerRC, seq[i+k], k);
@@ -459,7 +459,7 @@ unordered_map<minimizer,uint8_t> kmerCounting(const string& readFile, const uint
 }
 
 
-unordered_set<minimizer> getSolidSet(unordered_map<minimizer,uint8_t>& count, uint T){
+unordered_set<minimizer> getSolidSet(unordered_map<minimizer,uint64_t >& count, uint64_t T){
 	unordered_set<minimizer> solid;
 	for ( auto it = count.begin(); it != count.end(); ++it ){
 		// cout<<it->second<<endl;
@@ -472,7 +472,7 @@ unordered_set<minimizer> getSolidSet(unordered_map<minimizer,uint8_t>& count, ui
 }
 
 
-unordered_multimap<minimizer,minimizer> getSolidMap(unordered_map<minimizer,uint8_t>& count, uint T, uint k, uint nuc){
+unordered_multimap<minimizer,minimizer> getSolidMap(unordered_map<minimizer,uint64_t >& count, uint64_t T, uint64_t k, uint64_t nuc){
 	unordered_multimap<minimizer,minimizer> map;
 	for ( auto it = count.begin(); it != count.end(); ++it ){
 		if(it->second>=T){
@@ -492,9 +492,9 @@ unordered_multimap<minimizer,minimizer> getSolidMap(unordered_map<minimizer,uint
 
 
 void bench(){
-	uint H(1000);
-	uint nuc(10);
-	uint k(11),part(2);
+	uint64_t H(1000);
+	uint64_t nuc(10);
+	uint64_t k(11),part(2);
 	ifstream readFile1("reads_virus_10k_0001.ref");
 	ifstream readFile2("reads.fa");
 	vector<string> V1,Vref;
@@ -502,8 +502,8 @@ void bench(){
 	string ref(Vref[0]);
 	cout<<"ref"<<ref.size()<<endl;
 	V1=getReads(readFile2,100);
-	for(int j(0);j<15;j+=2){
-	uint i(0),res1(0),res2(0),res3(0),res4(0),res5(0),res6(0),res7(0),res8(0),res9(0),res10(0);
+	for(uint64_t j(0);j<15;j+=2){
+	uint64_t i(0),res1(0),res2(0),res3(0),res4(0),res5(0),res6(0),res7(0),res8(0),res9(0),res10(0);
 		k=11+j;
 		cout<<"H:"<<H<<endl;
 		cout<<"k:"<<k<<endl;
